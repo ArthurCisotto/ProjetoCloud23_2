@@ -486,3 +486,4 @@ output "link_to_docs" {
 5. **Inicialização do Terraform**: Prepare seu ambiente com `terraform init`.
 6. **Aplicação do Terraform**: Implemente a infraestrutura com `terraform apply -auto-approve`.
 7. **Validação**: Após a aplicação, use o link de output (link_to_docs) para acessar a documentação da aplicação e verificar se ela está funcionando corretamente.
+8. **Destruição da Infraestrutura**: Destrua a infraestrutura com `terraform destroy -auto-approve`.

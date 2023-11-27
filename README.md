@@ -81,7 +81,7 @@ resource "aws_lb_listener" "arthur_alb_listener" {
 ### Auto Scaling (autoscaling.tf)
 **Launch Template**: O template de lançamento define os parâmetros das instâncias EC2, como a imagem da máquina Amazon (AMI) e o tipo de instância. O script de inicialização incluído no template configura automaticamente as instâncias com todas as dependências necessárias, e inicia a aplicação, promovendo uma padronização e uma inicialização eficiente das novas instâncias.
 
-**Auto Scaling Group (ASG)**: O ASG é crucial para a escalabilidade da aplicação, ajustando automaticamente o número de instâncias EC2 em resposta à demanda. Isso garante que a aplicação mantenha uma performance estável e responsiva sob diferentes cargas de trabalho.
+**Auto Scaling Group (ASG)**: O ASG é crucial para a escalabilidade da aplicação, ajustando automaticamente o número de instâncias EC2 em resposta à demanda. Isso garante que a aplicação mantenha uma performance estável e responsiva sob diferentes cargas de trabalho. O ASG também é configurado para distribuir as instâncias em diferentes zonas de disponibilidade, garantindo a resiliência da aplicação em caso de falhas.
 
 **CloudWatch Alarms**: Os alarmes do CloudWatch são configurados para monitorar métricas críticas como a utilização da CPU. Esses alarmes permitem que o ASG ajuste dinamicamente o número de instâncias, mantendo a aplicação otimizada para a demanda atual.
 
@@ -140,7 +140,7 @@ resource "aws_autoscaling_group" "arthur_asg" {
   desired_capacity     = 2
   max_size             = 6
   min_size             = 2
-  vpc_zone_identifier  = [aws_subnet.arthur_public_subnet1.id]
+  vpc_zone_identifier  = [aws_subnet.arthur_public_subnet1.id, aws_subnet.arthur_public_subnet2.id]
   target_group_arns    = [aws_lb_target_group.arthur_alb_tg.arn]
 
   launch_template {
@@ -219,14 +219,14 @@ resource "aws_autoscaling_policy" "arthur_scale_down" {
 ```
 
 ### Database (database.tf) 
-**RDS Instance**: A instância RDS é configurada para usar MySQL, com foco em alta disponibilidade e segurança dos dados. Recursos como backups automáticos e a opção Multi-AZ são configurados para garantir a continuidade dos negócios e a recuperação rápida em caso de falhas.
+**RDS Instance**: A instância RDS é configurada para usar MySQL, com foco em alta disponibilidade e segurança dos dados. Recursos como backups automáticos e a opção Multi-AZ são configurados para garantir a continuidade dos negócios e a recuperação rápida em caso de falhas. A instância RDS é configurada nas subnets privadas, garantindo que ela não seja acessível pela Internet.
 
 #### database.tf
 
 ``` terraform
 resource "aws_db_subnet_group" "arthur_db_subnet_group" {
   name       = "arthur-db-subnet-group"
-  subnet_ids = [aws_subnet.arthur_public_subnet1.id, aws_subnet.arthur_public_subnet2.id]
+  subnet_ids = [aws_subnet.arthur_private_subnet1.id, aws_subnet.arthur_private_subnet2.id]
   tags = {
     Name = "Arthur DB Subnet Group"
   }
@@ -259,45 +259,6 @@ resource "aws_db_instance" "arthur_rds" {
 }
 ```
 
-### NAT Gateway (nat.tf) 
-**Elastic IP e NAT Gateway**: A implementação do NAT Gateway, associada a um Elastic IP, é fundamental para permitir que instâncias em subnets privadas acessem recursos externos à VPC, enquanto mantêm a segurança e o isolamento da rede interna.
-
-#### nat.tf
-
-``` terraform
-# Elastic IP para NAT Gateway
-resource "aws_eip" "arthur_eip" {
-  depends_on = [aws_internet_gateway.arthur_igw]
-  domain    = "vpc"
-  tags = {
-    Name = "arthur_EIP_for_NAT"
-  }
-}
-
-# NAT Gateway
-resource "aws_nat_gateway" "arthur_nat_gateway" {
-  allocation_id = aws_eip.arthur_eip.id
-  subnet_id     = aws_subnet.arthur_public_subnet1.id
-  tags = {
-    Name = "Arthur NAT Gateway"
-  }
-  depends_on = [aws_internet_gateway.arthur_igw]
-}
-
-# Tabela de Rotas para Subnet Privada
-resource "aws_route_table" "arthur_private_rt" {
-  vpc_id = aws_vpc.arthur_main_vpc.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.arthur_nat_gateway.id
-  }
-}
-
-resource "aws_route_table_association" "arthur_rta_private" {
-  subnet_id      = aws_subnet.arthur_private_subnet.id
-  route_table_id = aws_route_table.arthur_private_rt.id
-}
-```
 
 ### Rede (network.tf e routes.tf) 
 **VPC e Subnets**:
@@ -335,17 +296,25 @@ resource "aws_subnet" "arthur_public_subnet2" {
 }
 
 # Subnet Privada
-resource "aws_subnet" "arthur_private_subnet" {
+resource "aws_subnet" "arthur_private_subnet1" {
   vpc_id                  = aws_vpc.arthur_main_vpc.id
   cidr_block              = "10.0.1.0/27"
   map_public_ip_on_launch = false
   availability_zone       = "us-east-1b"
 }
 
+resource "aws_subnet" "arthur_private_subnet2" {
+  vpc_id                  = aws_vpc.arthur_main_vpc.id
+  cidr_block              = "10.0.1.32/27"
+  map_public_ip_on_launch = false
+  availability_zone       = "us-east-1a"
+}
+
 # Internet Gateway
 resource "aws_internet_gateway" "arthur_igw" {
   vpc_id = aws_vpc.arthur_main_vpc.id
 }
+
 ```
 
 
@@ -487,3 +456,8 @@ output "link_to_docs" {
 6. **Aplicação do Terraform**: Implemente a infraestrutura com `terraform apply -auto-approve`.
 7. **Validação**: Após a aplicação, use o link de output (link_to_docs) para acessar a documentação da aplicação e verificar se ela está funcionando corretamente.
 8. **Destruição da Infraestrutura**: Destrua a infraestrutura com `terraform destroy -auto-approve`.
+
+### [Link para o vídeo de demonstração do projeto](https://youtu.be/TSk15kIm-78)
+
+###Diagrama da Infraestrutura
+![Diagrama da Infraestrutura](diag_infra.png)

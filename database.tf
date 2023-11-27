@@ -1,6 +1,6 @@
 resource "aws_db_subnet_group" "arthur_db_subnet_group" {
   name       = "arthur-db-subnet-group"
-  subnet_ids = [aws_subnet.arthur_public_subnet1.id, aws_subnet.arthur_public_subnet2.id]
+  subnet_ids = [aws_subnet.arthur_private_subnet1.id, aws_subnet.arthur_private_subnet2.id]
   tags = {
     Name = "Arthur DB Subnet Group"
   }

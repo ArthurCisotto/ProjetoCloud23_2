@@ -50,7 +50,7 @@ resource "aws_autoscaling_group" "arthur_asg" {
   desired_capacity     = 2
   max_size             = 6
   min_size             = 2
-  vpc_zone_identifier  = [aws_subnet.arthur_public_subnet1.id]
+  vpc_zone_identifier  = [aws_subnet.arthur_public_subnet1.id, aws_subnet.arthur_public_subnet2.id]
   target_group_arns    = [aws_lb_target_group.arthur_alb_tg.arn]
 
   launch_template {
